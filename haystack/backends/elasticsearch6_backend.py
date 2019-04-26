@@ -164,7 +164,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
         self.content_field_name, field_mapping = self.build_schema(
             unified_index.all_searchfields()
         )
-        current_mapping = {"properties": field_mapping}
+        current_mapping = {"modelresult": {"properties": field_mapping}}
 
         if current_mapping != self.existing_mapping:
             try:
@@ -173,7 +173,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                     index=self.index_name, body=self.DEFAULT_SETTINGS, ignore=400
                 )
                 self.conn.indices.put_mapping(
-                    index=self.index_name, body=current_mapping
+                    index=self.index_name, doc_type="modelresult", body=current_mapping
                 )
                 self.existing_mapping = current_mapping
             except Exception:
@@ -223,7 +223,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                     extra={"data": {"index": index, "object": get_identifier(obj)}},
                 )
 
-        bulk(self.conn, prepped_docs, index=self.index_name)
+        bulk(self.conn, prepped_docs, index=self.index_name, doc_type="modelresult")
 
         if commit:
             self.conn.indices.refresh(index=self.index_name)
@@ -248,7 +248,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
 
         try:
             self.conn.delete(
-                index=self.index_name, id=doc_id, ignore=404
+                index=self.index_name, doc_type="modelresult", id=doc_id, ignore=404
             )
 
             if commit:
@@ -290,7 +290,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
                     "query": {"query_string": {"query": " OR ".join(models_to_delete)}}
                 }
                 self.conn.delete_by_query(
-                    index=self.index_name, body=query
+                    index=self.index_name, doc_type="modelresult", body=query
                 )
         except elasticsearch.TransportError as e:
             if not self.silently_fail:
@@ -562,6 +562,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
             raw_results = self.conn.search(
                 body=search_kwargs,
                 index=self.index_name,
+                doc_type="modelresult",
                 _source=True,
             )
         except elasticsearch.TransportError as e:
@@ -623,6 +624,7 @@ class ElasticsearchSearchBackend(BaseSearchBackend):
         try:
             raw_results = self.conn.mlt(
                 index=self.index_name,
+                doc_type="modelresult",
                 id=doc_id,
                 mlt_fields=[field_name],
                 **params
